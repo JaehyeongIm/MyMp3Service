@@ -1,17 +1,44 @@
 package com.example.mymp3service
 
 import android.annotation.SuppressLint
-import android.app.Service
+import android.app.*
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.media.MediaPlayer
 import android.os.IBinder
+import androidx.core.app.NotificationCompat
+
 
 class MyService : Service() {
     lateinit var song:String
     var player: MediaPlayer?=null
+
+    var manager:NotificationManager?=null
+    val notificationid=100
+
+
+    @SuppressLint("UnspecifiedImmutableFlag")
+    fun makeNotification(){
+        val channel = NotificationChannel("channel1","mp3channel",NotificationManager.IMPORTANCE_DEFAULT)
+        manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager?.createNotificationChannel(channel)
+        val resultIntent = Intent(this, MainActivity::class.java)
+        val resultPendingIntent: PendingIntent? = TaskStackBuilder.create(this).run {
+            addNextIntentWithParentStack(resultIntent)
+            getPendingIntent(0,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        }
+
+        val builder = NotificationCompat.Builder(this, "channel1")
+            .setSmallIcon(R.drawable.baseline_audiotrack_24)
+            .setContentTitle("MP3")
+            .setContentText("MP3 플레이중...")
+            .setContentIntent(resultPendingIntent)
+        val notification = builder.build()
+        startForeground(notificationid,notification)
+    }
 
     override fun onBind(intent: Intent): IBinder? {
         return null
@@ -27,6 +54,8 @@ class MyService : Service() {
         super.onCreate()
         registerReceiver(receiver, IntentFilter("com.example.MP3SERVICE"))
     }
+
+
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if(player!=null &&player!!.isPlaying){
@@ -55,9 +84,11 @@ class MyService : Service() {
                 "play"->{
                     song = intent.getStringExtra("song")!!
                     startPlay()
+                    makeNotification()
                 }
                 "stop" ->{
                     stopPlay()
+                    stopForeground(Service.STOP_FOREGROUND_REMOVE)
                 }
             }
         }
